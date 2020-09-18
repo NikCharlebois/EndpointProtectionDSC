@@ -1,1 +1,1 @@
-# ServiceFabricDSC
+# EndPointProtectionDSC
