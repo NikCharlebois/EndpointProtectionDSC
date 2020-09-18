@@ -26,7 +26,7 @@ function New-EPDSCAzureGuestConfigurationPolicyPackage
         -BindingVariable ParameterValues
     $policy = New-GuestConfigurationPolicy `
         -ContentUri $Url `
-        -DisplayName 'Monitor Antivirus.' `
+        -DisplayName 'Monitor Antivirus' `
         -Description 'Audit if a given Antivirus Software is not enabled on Windows machine.' `
         -Path './policies' `
         -Platform 'Windows' `
@@ -35,7 +35,7 @@ function New-EPDSCAzureGuestConfigurationPolicyPackage
     Write-Host "Done" -ForegroundColor Green
 
     Write-Host "Publishing Guest Configuration Policy..." -NoNewLine
-    $publishedPolicies = Publish-GuestConfigurationPolicy -Path '.\policies'
+    $publishedPolicies = Publish-GuestConfigurationPolicy -Path ".\policies"
     Write-Host "Done" -ForegroundColor Green
 }
 
@@ -75,11 +75,11 @@ function Publish-EPDSCPackage
     if ($null -eq $storageContainer)
     {
         $storageContainer = New-AzStorageContainer -Name $storageContainerName `
-            -Context $storageContext
+            -Context $storageContext -Permission Container
     }
 
     # Upload file
-    $blobName = "monitorantivirus"
+    $blobName = "MonitorAntivirus.zip"
     $Blob = Set-AzStorageBlobContent -Context $storageContext `
         -Container $storageContainerName `
         -File $($env:Temp + "/MonitorAntivirus/MonitorAntivirus.zip") `
