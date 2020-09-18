@@ -31,11 +31,11 @@ function New-EPDSCAzureGuestConfigurationPolicyPackage
         -Path './policies' `
         -Platform 'Windows' `
         -Version 1.0.0 `
-        -Parameter $ParameterValues
+        -Parameter $ParameterValues -Verbose
     Write-Host "Done" -ForegroundColor Green
 
     Write-Host "Publishing Guest Configuration Policy..." -NoNewLine
-    $publishedPolicies = Publish-GuestConfigurationPolicy -Path ".\policies"
+    $publishedPolicies = Publish-GuestConfigurationPolicy -Path ".\policies" -Verbose
     Write-Host "Done" -ForegroundColor Green
 }
 

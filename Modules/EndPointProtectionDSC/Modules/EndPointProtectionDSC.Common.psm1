@@ -16,10 +16,8 @@ function Get-EPDSCInstalledAntivirus
     $AntivirusProduct = $null
     try
     {
-        $AntivirusProduct = Get-WmiObject -Namespace "root\SecurityCenter2" `
-            -Query $wmiQuery `
-            -ComputerName $ComputerName `
-            -ErrorAction 'SilentlyContinue'
+        $AntivirusProduct = Get-CimInstance -Namespace "root\SecurityCenter2" `
+            -ClassName AntivirusProduct | Where-Object -FilterScript {$_.displayName -eq $AntivirusName}
     }
     catch
     {

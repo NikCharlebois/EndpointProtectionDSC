@@ -7,7 +7,7 @@ Configuration MonitorAntivirus
         EPAntivirusStatus AV
         {
             AntivirusName = "Windows Defender"
-            Status        = "Stopped"
+            Status        = "Running"
             Ensure        = "Present"
         }
     }
