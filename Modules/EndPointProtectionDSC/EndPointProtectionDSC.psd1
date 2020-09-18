@@ -63,14 +63,14 @@
   # FormatsToProcess = @()
 
   # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
-  NestedModules     = @("modules\EndPointProtectionDSC.Common.psm1")
+  NestedModules     = @("modules\EndPointProtectionDSC.Common.psm1",
+                        "AzureGuestConfigurationPolicy\AzureGuestPolicyHelper.psm1")
 
   # Functions to export from this module
   #FunctionsToExport = '*'
 
   # Cmdlets to export from this module
-  CmdletsToExport   = @("Get-EPDSCProcessByReportingExecutable", `
-      "Get-EPDSCInstalledAntivirus")
+  CmdletsToExport   = @("New-EPDSCAzureGuestConfigurationPolicyPackage")
 
   # Variables to export from this module
   #VariablesToExport = '*'
