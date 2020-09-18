@@ -26,6 +26,10 @@ function Get-TargetResource
 
     $nullReturn = $PSBoundParameters
     $nullReturn.Ensure = "Absent"
+    if ($null -ne $nullReturn.Verbose)
+    {
+        $nullReturn.Remove("Verbose")
+    }
     if ($null -eq $AntivirusInfo)
     {
         Write-Verbose -Message "Could not obtain Information about Antivirus {$AntivirusName}"
@@ -39,6 +43,7 @@ function Get-TargetResource
                 }
         }
         $nullReturn.Reasons = $Reasons
+        
         return $nullReturn
     }
 
@@ -46,7 +51,7 @@ function Get-TargetResource
     if ($Ensure -eq 'Absent')
     {
         $Reasons += @{
-            Code = "epantivirusstatus:epantivirusstatus:antivirusinstalled"
+            Code   = "epantivirusstatus:epantivirusstatus:antivirusinstalled"
             Phrase = "Antivirus {$AntivirusName} is installed but it should NOT."
         }
     }
@@ -69,7 +74,7 @@ function Get-TargetResource
             if ($Status -eq 'Running')
             {
                 $Reasons += @{
-                    Code = "epantivirusstatus:epantivirusstatus:agentnotrunning"
+                    Code   = "epantivirusstatus:epantivirusstatus:agentnotrunning"
                     Phrase = "Antivirus Agent for {$AntivirusName} is not running and it SHOULD be."
                 }
             }
@@ -77,7 +82,7 @@ function Get-TargetResource
             else
             {
                 $Reasons += @{
-                    Code = "epantivirusstatus:epantivirusstatus:agentrunning"
+                    Code   = "epantivirusstatus:epantivirusstatus:agentrunning"
                     Phrase = "Antivirus Agent for {$AntivirusName} is running and it should NOT be."
                 }
             }
@@ -92,7 +97,11 @@ function Get-TargetResource
     }
     catch
     {
-        Write-Verbose -Message "Could not retrieve process runnign for Antivirus {$AntivirusName}"
+        Write-Verbose -Message "Could not retrieve process running for Antivirus {$AntivirusName}"
+        $nullReturn.Reasons = @{
+            Code   = "epantivirusstatus:epantivirusstatus:unexpected"
+            Phrase = "Unexpected Error."
+        }
         return $nullReturn
     }
     return $result
@@ -140,11 +149,7 @@ function Test-TargetResource
         [Parameter()]
         [System.String]
         [ValidateSet("Absent", "Present")]
-        $Ensure,
-
-        [Parameter()]
-        [Array]
-        $Reasons
+        $Ensure
     )
 
     Write-Verbose -Message "Testing Settings of Antivirus {$AntivirusName}"
@@ -160,7 +165,7 @@ function Test-TargetResource
         Write-Verbose -Message 'The current VM is not in compliance due to:'
         foreach ($reason in $CurrentValues.Reasons)
         {
-            Write-Verbose -Message $reason.Phrase
+            Write-Verbose -Message "-->$($reason.Phrase)"
         }
     }
     Write-Verbose -Message "Test-TargetResource returned $result"

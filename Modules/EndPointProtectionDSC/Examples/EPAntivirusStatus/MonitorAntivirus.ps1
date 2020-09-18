@@ -2,7 +2,7 @@ Configuration MonitorAntivirus
 {
     Import-DscResource -ModuleName EndPointProtectionDSC -ModuleVersion 1.0.0.0
 
-    Node localhost
+    Node MonitorAntivirus
     {
         EPAntivirusStatus AV
         {
