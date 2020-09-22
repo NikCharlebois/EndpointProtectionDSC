@@ -1,6 +1,6 @@
 Configuration MonitorAntivirus
 {
-    Import-DscResource -ModuleName EndPointProtectionDSC -ModuleVersion 1.0.0.0
+    Import-DscResource -ModuleName EndPointProtectionDSC
 
     Node MonitorAntivirus
     {

@@ -68,8 +68,7 @@
   # FormatsToProcess = @()
 
   # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
-  NestedModules     = @("modules\EndPointProtectionDSC.Common.psm1",
-                        "AzureGuestConfigurationPolicy\AzureGuestPolicyHelper.psm1")
+  NestedModules     = @("AzureGuestConfigurationPolicy\AzureGuestPolicyHelper.psm1")
 
   # Functions to export from this module
   #FunctionsToExport = '*'

@@ -3,12 +3,18 @@ function New-EPDSCAzureGuestConfigurationPolicyPackage
     [CmdletBinding()]
     param()
 
+    $deploymentName = Read-Host "Pick a random Resource Group Name"
+
     Write-Host "Connecting to Azure..." -NoNewLine
     Connect-AzAccount | Out-Null
     Write-Host "Done" -ForegroundColor Green
 
     Write-Host "Compiling Configuration into a MOF file..." -NoNewLine
-    & "$PSScriptRoot/../Examples/EPAntivirusStatus/MonitorAntivirus.ps1" | Out-Null
+    if (Test-Path 'MonitorAntivirus')
+    {
+        Remove-Item "MonitorAntivirus" -Recurse -Force -Confirm:$false
+    }
+    & "$PSScriptRoot/Configurations/MonitorAntivirus.ps1" | Out-Null
     Write-Host "Done" -ForegroundColor Green
 
     Write-Host "Generating Guest Configuration Package..." -NoNewLine
@@ -17,10 +23,14 @@ function New-EPDSCAzureGuestConfigurationPolicyPackage
     Write-Host "Done" -ForegroundColor Green
 
     Write-Host "Publishing Package to Azure Storage..." -NoNewLine
-    $Url = Publish-EPDSCPackage
+    $Url = Publish-EPDSCPackage -DeploymentName $deploymentName
     Write-Host "Done" -ForegroundColor Green
 
     Write-Host "Generating Guest Configuration Policy..." -NoNewLine
+    if (Test-Path 'policies')
+    {
+        Remove-Item "policies" -Recurse -Force -Confirm:$false
+    }
     Import-LocalizedData -BaseDirectory "$PSScriptRoot/ParameterFiles/" `
         -FileName "EPAntivirusStatus.Params.psd1" `
         -BindingVariable ParameterValues
@@ -43,9 +53,16 @@ function Publish-EPDSCPackage
 {
     [CmdletBinding()]
     [OutputType([System.String])]
-    param()
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $DeploymentName
+    )
 
-    $resourceGroupName = 'EPDSCPolicyFiles'
+    $storageContainerName = $DeploymentName.ToLower() + "ctn"
+    $storageAccountName   = $DeploymentName.ToLower() + "str"
+    $resourceGroupName = $DeploymentName
+
     $resourceGroup     = Get-AzResourceGroup $resourceGroupName -ErrorAction "SilentlyContinue"
     if ($null -eq $resourceGroup)
     {
@@ -53,7 +70,6 @@ function Publish-EPDSCPackage
             -Location "centralus"
     }
 
-    $storageAccountName   = 'epdscstorage'
     $storageAccount = Get-AzStorageAccount -Name $storageAccountName `
         -ResourceGroupName $resourceGroupName -ErrorAction "SilentlyContinue"
     if ($null -eq $storageAccount)
@@ -69,14 +85,22 @@ function Publish-EPDSCPackage
         -Name $storageAccountName | `
         ForEach-Object { $_.Context }
 
-    $storageContainerName = 'epdscitems'
     $storageContainer = Get-AzStorageContainer $storageContainerName `
         -Context $storageContext -ErrorAction "SilentlyContinue"
-    if ($null -eq $storageContainer)
+    if ($null -ne $storageContainer)
     {
-        $storageContainer = New-AzStorageContainer -Name $storageContainerName `
-            -Context $storageContext -Permission Container
+        while ($null -ne $storageContainer)
+        {
+            Start-Sleep 2
+            $storageContainer = Get-AzStorageContainer $storageContainerName `
+                -Context $storageContext -ErrorAction "SilentlyContinue"
+        }
+        Remove-AzStorageContainer -Name $storageContainerName `
+            -Context $storageContext -Force -Confirm:$false
     }
+
+    $storageContainer = New-AzStorageContainer -Name $storageContainerName `
+            -Context $storageContext -Permission Container
 
     # Upload file
     $blobName = "MonitorAntivirus.zip"

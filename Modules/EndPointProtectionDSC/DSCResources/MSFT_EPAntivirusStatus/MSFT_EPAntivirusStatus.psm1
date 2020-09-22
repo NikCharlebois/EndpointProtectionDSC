@@ -1,3 +1,53 @@
+function Get-EPDSCInstalledAntivirus
+{ 
+    [CmdletBinding()]
+    [OutputType([System.Object[]])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $AntivirusName,
+
+        [Parameter()]
+        [System.String]
+        $ComputerName = "$env:computername"
+    ) 
+ 
+    $wmiQuery = "SELECT * FROM AntiVirusProduct WHERE displayName ='$AntivirusName'"
+    $AntivirusProduct = $null
+    try
+    {
+        $AntivirusProduct = Get-CimInstance -Namespace "root\SecurityCenter2" `
+            -ClassName AntivirusProduct -ErrorAction 'Stop' | Where-Object -FilterScript {$_.displayName -like $AntivirusName}
+    }
+    catch
+    {
+        Write-Verbose -Message "Couldn't obtain the list of installed Antivirus"
+    }
+    return $AntivirusProduct
+} 
+  
+function Get-EPDSCProcessByReportingExecutable
+{
+    [CmdletBinding()]
+    [OutputType([System.Object])]
+    param(
+        [Parameter()]
+        [System.String]
+        $ExecutableName
+    )
+
+    $processInfo = $null
+    try
+    {
+        $processInfo = Get-Process -Name $ExecutableName -ErrorAction SilentlyContinue
+    }
+    catch
+    {
+        Write-Verbose -Message "Could not find process running executable file {$ExecutableName}"
+    }
+    return $processInfo
+}
+
 function Get-TargetResource
 {
     [CmdletBinding()]
@@ -42,7 +92,7 @@ function Get-TargetResource
                     Phrase = "Antivirus {$AntivirusName} should be installed but it's NOT."
                 }
         }
-        $nullReturn.Reasons = $Reasons
+        $nullReturn.Add("Reasons", $Reasons)
         
         return $nullReturn
     }
@@ -98,10 +148,11 @@ function Get-TargetResource
     catch
     {
         Write-Verbose -Message "Could not retrieve process running for Antivirus {$AntivirusName}"
-        $nullReturn.Reasons = @{
+        $Reasons = @{
             Code   = "epantivirusstatus:epantivirusstatus:unexpected"
             Phrase = "Unexpected Error."
         }
+        $nullReturn.Add("Reasons", $Reasons)
         return $nullReturn
     }
     return $result
@@ -127,8 +178,7 @@ function Set-TargetResource
         $Ensure
     )
 
-    Write-Verbose -Message "Calling the Set-TargetResource function for Antivirus {$AntivirusName}"
-
+    throw "Calling the Set-TargetResource function for Antivirus {$AntivirusName} is not supported"
 }
 
 function Test-TargetResource
@@ -154,22 +204,28 @@ function Test-TargetResource
 
     Write-Verbose -Message "Testing Settings of Antivirus {$AntivirusName}"
 
-    $CurrentValues = Get-TargetResource @PSBoundParameters
-
-    $result = $true
-    if ($CurrentValues.Status -ne $Status -or $CurrentValues.Ensure -ne $Ensure)
+    try
     {
-        $result = $false
+        $CurrentValues = Get-TargetResource @PSBoundParameters
 
-        # Display the reasons for non-compliance
-        Write-Verbose -Message 'The current VM is not in compliance due to:'
-        foreach ($reason in $CurrentValues.Reasons)
+        $result = $true
+        if ($CurrentValues.Status -ne $Status -or $CurrentValues.Ensure -ne $Ensure)
         {
-            Write-Verbose -Message "-->$($reason.Phrase)"
-        }
-    }
-    Write-Verbose -Message "Test-TargetResource returned $result"
-    return $result
-}
+            $result = $false
 
-Export-ModuleMember -Function *-TargetResource
+            # Display the reasons for non-compliance
+            Write-Verbose -Message 'The current VM is not in compliance due to:'
+            foreach ($reason in $CurrentValues.Reasons)
+            {
+                Write-Verbose -Message "-->$($reason.Phrase)"
+            }
+        }
+        Write-Verbose -Message "Test-TargetResource returned $result"
+        return $result
+    }
+    catch
+    {
+        Write-Verbose -Message "Something went wrong in the Test-TargetResource method"
+    }
+    return $false
+}
