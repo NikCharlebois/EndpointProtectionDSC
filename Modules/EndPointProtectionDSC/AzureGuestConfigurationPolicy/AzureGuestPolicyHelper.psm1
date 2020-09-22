@@ -3,7 +3,21 @@ function New-EPDSCAzureGuestConfigurationPolicyPackage
     [CmdletBinding()]
     param()
 
-    $deploymentName = Read-Host "Pick a random Resource Group Name"
+    $ResourceGroupName     = Read-Host "Resource Group Name"
+    $ResourceGroupLocation = Read-Host "Location"
+    $storageContainerName  = Read-Host "Storage Container Name"
+    $storageAccountName    = Read-Host "Storage Account Name"
+    $storageSKUName        = Read-Host "Storage SKU Name"
+
+    if ([System.String]::IsNullOrEmpty($storageSKUName))
+    {
+        $storageSKUName = "Standard_LRS"
+    }
+
+    if ([System.String]::IsNullOrEmpty($ResourceGroupLocation))
+    {
+        $storageSKUName = "eastus"
+    }
 
     Write-Host "Connecting to Azure..." -NoNewLine
     Connect-AzAccount | Out-Null
@@ -23,7 +37,11 @@ function New-EPDSCAzureGuestConfigurationPolicyPackage
     Write-Host "Done" -ForegroundColor Green
 
     Write-Host "Publishing Package to Azure Storage..." -NoNewLine
-    $Url = Publish-EPDSCPackage -DeploymentName $deploymentName
+    $Url = Publish-EPDSCPackage -ResourceGroupName $ResourceGroupName `
+        -StorageAccountName $StorageAccountName.ToLower() `
+        -StorageContainerName $StorageContainerName.ToLower() `
+        -StorageSKUName $StorageSKUName `
+        -ResourceGroupLocation $ResourceGroupLocation
     Write-Host "Done" -ForegroundColor Green
 
     Write-Host "Generating Guest Configuration Policy..." -NoNewLine
@@ -56,56 +74,68 @@ function Publish-EPDSCPackage
     param(
         [Parameter(Mandatory = $true)]
         [System.String]
-        $DeploymentName
+        $ResourceGroupName,
+
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $StorageAccountName,
+
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $StorageContainerName,
+
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $StorageSKUName,
+
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $ResourceGroupLocation
     )
 
-    $storageContainerName = $DeploymentName.ToLower() + "ctn"
-    $storageAccountName   = $DeploymentName.ToLower() + "str"
-    $resourceGroupName = $DeploymentName
-
-    $resourceGroup     = Get-AzResourceGroup $resourceGroupName -ErrorAction "SilentlyContinue"
+    $resourceGroup     = Get-AzResourceGroup $ResourceGroupName -ErrorAction "SilentlyContinue"
     if ($null -eq $resourceGroup)
     {
-        $resourceGroup = New-AzResourceGroup -Name $resourceGroupName `
-            -Location "centralus"
+        $resourceGroup = New-AzResourceGroup -Name $ResourceGroupName `
+            -Location $ResourceGroupLocation
     }
 
-    $storageAccount = Get-AzStorageAccount -Name $storageAccountName `
-        -ResourceGroupName $resourceGroupName -ErrorAction "SilentlyContinue"
+    $storageAccount = Get-AzStorageAccount -Name $StorageAccountName `
+        -ResourceGroupName $ResourceGroupName -ErrorAction "SilentlyContinue"
     if ($null -eq $storageAccount)
     {
-        $storageAccount = New-AzStorageAccount -Name $storageAccountName `
-            -ResourceGroupName $resourceGroupName `
-            -SkuName "Standard_LRS" `
-            -Location "centralus"
+        $storageAccount = New-AzStorageAccount -Name $StorageAccountName `
+            -ResourceGroupName $ResourceGroupName `
+            -SkuName $StorageSKUName `
+            -Location $ResourceGroupLocation
     }
 
     # Get Storage Context
-    $storageContext = Get-AzStorageAccount -ResourceGroupName $resourceGroupName `
-        -Name $storageAccountName | `
+    $storageContext = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName `
+        -Name $StorageAccountName | `
         ForEach-Object { $_.Context }
 
-    $storageContainer = Get-AzStorageContainer $storageContainerName `
+    $storageContainer = Get-AzStorageContainer $StorageContainerName `
         -Context $storageContext -ErrorAction "SilentlyContinue"
     if ($null -ne $storageContainer)
     {
         while ($null -ne $storageContainer)
         {
             Start-Sleep 2
-            $storageContainer = Get-AzStorageContainer $storageContainerName `
+            $storageContainer = Get-AzStorageContainer $StorageContainerName `
                 -Context $storageContext -ErrorAction "SilentlyContinue"
         }
-        Remove-AzStorageContainer -Name $storageContainerName `
+        Remove-AzStorageContainer -Name $StorageContainerName `
             -Context $storageContext -Force -Confirm:$false
     }
 
-    $storageContainer = New-AzStorageContainer -Name $storageContainerName `
+    $storageContainer = New-AzStorageContainer -Name $StorageContainerName `
             -Context $storageContext -Permission Container
 
     # Upload file
     $blobName = "MonitorAntivirus.zip"
     $Blob = Set-AzStorageBlobContent -Context $storageContext `
-        -Container $storageContainerName `
+        -Container $StorageContainerName `
         -File $($env:Temp + "/MonitorAntivirus/MonitorAntivirus.zip") `
         -Blob $blobName `
         -Force
@@ -114,7 +144,7 @@ function Publish-EPDSCPackage
     $StartTime = (Get-Date)
     $ExpiryTime = $StartTime.AddYears('3')  # THREE YEAR EXPIRATION
     $SAS = New-AzStorageBlobSASToken -Context $storageContext `
-        -Container $storageContainerName `
+        -Container $StorageContainerName `
         -Blob $blobName `
         -StartTime $StartTime `
         -ExpiryTime $ExpiryTime `
